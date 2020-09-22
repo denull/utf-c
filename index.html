@@ -21,6 +21,9 @@
   <div>
     SCSU (<span id="stats-scsu"></span>): <span id="result-scsu"></span>
   </div>
+  <div>
+    Control: <span id="control"></span>
+  </div>
 
 <script>
   function plural(n, s = ['', 's']) {
@@ -48,6 +51,8 @@
     document.getElementById('stats-scsu').innerHTML = `${scsu.length} byte${plural(scsu.length)}`;
     displayBytes('result-scsu', scsu);
     //console.log(Array.of(...utfc).map(byte => String.fromCharCode(byte)).join(''));
+
+    document.getElementById('control').textContent = UTFC.decode(utfc);
 
     const hist = {};
     for (let ch of str) {

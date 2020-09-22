@@ -58,7 +58,7 @@ const UTFC = {
         cp = cp == 0x20 ? 0xFE : (cp == 0x2D ? 0xFF : (cp < 0x39 ? cp - 0x30 + 0xF4 : (cp < 0x5A ? cp - 0x41 + 0xC0 : (cp - 0x61 + 0xDA))));
         buf.push(cp);
       } else
-      if (cp >= auxOffs && cp <= auxOffs + 0x3F) { // 1 byte: code point is within the auxiliary alphabet
+      if (auxOffs !== 0 && cp >= auxOffs && cp <= auxOffs + 0x3F) { // 1 byte: code point is within the auxiliary alphabet
         buf.push(0xC0 + (cp - auxOffs));
       } else
       // Second, there're 6 extra ranges (Hiragana, Katakana, and Emojis) that normally would require 3 bytes/character,
@@ -69,9 +69,9 @@ const UTFC = {
         if (!is21Bit && newOffs === offs) { // 1 byte: code point is within the current alphabet
           buf.push(cp & 0x7F);
         } else {
-          // Reindex 6 ranges into a single contigious one
+          // Reindex 6 ranges into a single contiguous one
           const extra = cp < 0x2800 ? cp - 0x2000 : (cp < 0x3100 ? cp - 0x3000 + 0x800 : (cp < 0xFE10 ? cp - 0xFE00 + 0x900 : 
-            (cp < 0x1F200 ? cp - 0x1F170 : (cp < 0x1F700 ? cp - 0x1F300 + 0x9A0 : cp - 0x1F900 + 0xDA0))));
+            (cp < 0x1F200 ? cp - 0x1F170 : (cp < 0x1F700 ? cp - 0x1F300 + 0x9A0 : (cp - 0x1F900 + 0xDA0)))));
           buf.push(UTFC.MARKER_EXTRA | (1 + extra >> 8), extra & 0xFF);
           if (cp >= 0x3000 && cp < 0x3100) { // Only Hiragana and Katakana change the current alphabet
             auxOffs = offs in UTFC.AUX_OFFSETS ? UTFC.AUX_OFFSETS[offs] : offs, offs = newOffs, is21Bit = false;
@@ -108,8 +108,49 @@ const UTFC = {
     return (typeof Uint8Array === 'undefined' ? Buffer : Uint8Array).from(buf);
   },
 
-  // Decodes String from an UTF-C Uint8Array (similarly to TextEncoder.prototype.decode)
+  // Decodes String from an UTF-C Uint8Array/Buffer (similarly to TextEncoder.prototype.decode)
   decode: function(buf) {
-
+    let offs = 0, auxOffs = 0x00C0, is21Bit = false;
+    let str = [];
+    for (let i = 0; i < buf.length; i++) {
+      let cp = buf[i];
+      if ((cp & UTFC.MARKER_AUX) === UTFC.MARKER_AUX) {
+        if (auxOffs === 0) {
+          cp = cp == 0xFE ? 0x20 : (cp == 0xFF ? 0x2D : (cp < 0xDA ? cp - 0xC0 + 0x41 :
+            (cp < 0xF4 ? cp - 0xDA + 0x61 : (cp - 0xF4 + 0x30))));
+        } else {
+          cp = auxOffs + (cp - 0xC0);
+        }
+      } else
+      if ((cp & UTFC.MARKER_EXTRA) === UTFC.MARKER_EXTRA) {
+        cp = (cp & ~UTFC.MARKER_EXTRA) << 8 | buf[++i];
+        cp = cp < 0x800 ? cp + 0x2000 : (cp < 0x900 ? cp - 0x800 + 0x3000 : (cp < 0x910 ? cp - 0x900 + 0xFE00 :
+          (cp < 0x9A0 ? cp - 0x910 + 0x1F170 : (cp < 0xDA0 ? cp - 0x9A0 + 0x1F300 : (cp - 0xDA0 + 0x1F900)))));
+      } else
+      if ((cp & UTFC.MARKER_21BIT) === UTFC.MARKER_21BIT) {
+        cp = 0x2800 + ((cp & ~UTFC.MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
+        auxOffs = offs, offs = cp & UTFC.OFFS_MASK_21BIT, is21Bit = true;
+      } else
+      if ((cp & UTFC.MARKER_13BIT) === UTFC.MARKER_13BIT) {
+        cp = (cp & ~UTFC.MARKER_13BIT) << 8 | buf[++i];
+        if (cp <= UTFC.MAX_LATIN_CP) {
+          offs = 0;
+        } else {
+          auxOffs = offs in UTFC.AUX_OFFSETS ? UTFC.AUX_OFFSETS[offs] : offs, offs = cp & UTFC.OFFS_MASK_13BIT;
+        }
+        is21Bit = false;
+      } else
+      if (is21Bit) {
+        cp = 0x2800 + (offs | cp << 8 | buf[++i]);
+      } else {
+        cp = offs | cp;
+      }
+      str.push(cp);
+    }
+    return String.fromCodePoint(...str);
   },
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = UTFC;
 }
