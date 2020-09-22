@@ -52,6 +52,7 @@
     const hist = {};
     for (let ch of str) {
       const cp = ch.codePointAt(0);
+      console.log(ch, cp.toString(16));
       if (!(cp in hist)) {
         hist[cp] = 0;
       }

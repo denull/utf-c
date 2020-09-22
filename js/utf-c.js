@@ -19,12 +19,12 @@ const UTFC = {
   MARKER_21BIT: 0b10100000, // => 3 byte encoding
   MARKER_EXTRA: 0b10110000, // => 2 byte encoding, extra ranges
 
-  // Whenever the active alphabet is changed, the subrange of the previously selected one
-  // is coded via 0b11000000. Unfortunately, a lot of alphabets are not aligned to 64-byte
-  // chunks in a good way, so we select different portions here.
+  // The subrange of the previous (auxiliary) alphabet is coded via 0b11000000.
+  // Unfortunately, a lot of alphabets are not aligned to 64-byte chunks in a good way,
+  // so we select different portions here to cover most frequently used characters.
   AUX_OFFSETS: {
     // 0x0000, Latin is a special case, it merges A-Z, a-z, 0-9, "-" and " " characters.
-    0x0080: 0x00C0, // Latin-1 Supplement
+    0x0080: 0x00E0, // Latin-1 Supplement
     0x0380: 0x0391, // Greek
     0x0400: 0x0410, // Cyrillic
     0x0580: 0x05BE, // Hebrew
@@ -45,11 +45,10 @@ const UTFC = {
     0x0F80: 0x0F90, // Tibetan
     0x1080: 0x10B0, // Georgian
     0x3000: 0x3040, // Hiragana
-    0x3080: 0x3080, // Hiragana
   },
 
-  debug: function(buf, msg) {
-    console.log(msg, buf.map(b => b.toString(2).padStart(8, '0')));
+  debug: function(buf, msg, ...args) {
+    console.log(msg, buf.map(b => b.toString(2).padStart(8, '0')), ...args);
   },
 
   // Encodes String to an UTF-C Uint8Array (similarly to TextEncoder.prototype.encode)
@@ -61,7 +60,8 @@ const UTFC = {
     // `auxOffs` allows encoding 64 codepoints of the auxiliary alphabet. 
     // `is21Bit` is true if we're in 21-bit mode (2-3 bytes per character).
     let offs = 0, auxOffs = 0x00C0, is21Bit = false;
-    for (let i = 0, cp; cp = input.codePointAt(i), cp !== undefined; i++) {
+    for (let ch of input) {
+      let cp = ch.codePointAt(0);
       const len = buf.length;
       // First, check if we can use 1-byte encoding via small 6-bit auxiliary alphabet
       if (auxOffs === 0 && (cp === 0x20 || cp === 0x2D || (cp >= 0x41 && cp <= 0x5A) || (cp >= 0x61 && cp <= 0x7A) || (cp >= 0x30 && cp <= 0x39))) {
@@ -84,21 +84,23 @@ const UTFC = {
         buf.push(0xC0 + (cp - auxOffs));
         this.debug(buf.slice(len), 'AUX');
       } else
-      // Second, there're 3 extra ranges that normally would require 3 bytes/character,
+      // Second, there're 5 extra ranges that normally would require 3 bytes/character,
       // but are encoded with 2 (using range of codepoints 0x10FFFF-0x1FFFFF, which are not covered by Unicode)
-      if ((cp >= 0x2000 && cp < 0x2800) || (cp >= 0x3000 && cp < 0x3400) || (cp >= 0xFE00 && cp < 0x10000)) {
+      if ((cp >= 0x2000 && cp < 0x2800) || (cp >= 0x3000 && cp < 0x3100) || (cp >= 0xFE00 && cp < 0xFE10) || 
+          (cp >= 0x1F300 && cp < 0x1F700) || (cp >= 0x1F900 && cp < 0x1FA00)) {
         const newOffs = cp & UTFC.OFFS_MASK_13BIT;
         if (!is21Bit && newOffs === offs) {
           // Current offset is still valid, encode only the rightmost 7 bits of the codepoint
           buf.push(cp & 0x7F);
           this.debug(buf.slice(len), 'EXTRA');
         } else {
-          // Reindex 3 ranges into a single contigious one
-          const extra = cp < 0x2800 ? cp - 0x2000 : (cp < 0x3400 ? cp - 0x3000 + 0x800 : (cp - 0xFE00 + 0xC00));
+          // Reindex 5 ranges into a single contigious one
+          const extra = cp < 0x2800 ? cp - 0x2000 : (cp < 0x3100 ? cp - 0x3000 + 0x800 : 
+            (cp < 0xFE10 ? cp - 0xFE00 + 0x900 : (cp < 0x1F700 ? cp - 0x1F300 + 0x910 : cp - 0x1F900 + 0xD10)));
           buf.push(UTFC.MARKER_EXTRA | (1 + extra >> 8), cp & 0xFF);
           auxOffs = offs in UTFC.AUX_OFFSETS ? UTFC.AUX_OFFSETS[offs] : offs;
           offs = newOffs, is21Bit = false;
-          this.debug(buf.slice(len), 'EXTRA Shift');
+          this.debug(buf.slice(len), 'EXTRA Shift', newOffs.toString(16));
         }
       } else
       // Lastly, check codepoint size to determine if it needs short (13-bit) or long (21-bit) mode
@@ -115,7 +117,7 @@ const UTFC = {
           // We need to store the new offset, this character will cost 3 bytes
           buf.push(UTFC.MARKER_21BIT | (cp >> 16), cp >> 8, cp & 0xFF);
           auxOffs = offs, offs = newOffs, is21Bit = true;
-          this.debug(buf.slice(len), '21b Shift');
+          this.debug(buf.slice(len), '21b Shift', newOffs.toString(16));
         }
       } else {
         // This code point requires max 13 bits to encode
@@ -128,15 +130,14 @@ const UTFC = {
           // Final case: we need 2 bytes for this character
           buf.push(UTFC.MARKER_13BIT | (cp >> 8), cp & 0xFF);
           if (cp <= UTFC.MAX_LATIN_CP) {
-            // For extended Latin we change only the auxiliary alphabet
-            auxOffs = newOffs in UTFC.AUX_OFFSETS ? UTFC.AUX_OFFSETS[newOffs] : newOffs;
+            // For extended Latin we keep alphabet equal to 0
             offs = 0;
-            this.debug(buf.slice(len), '13b No Shift');
+            this.debug(buf.slice(len), '13b No Shift', newOffs.toString(16));
           } else {
             // Otherwise, change the current alphabet, and store the previous one as auxiliary
             auxOffs = offs in UTFC.AUX_OFFSETS ? UTFC.AUX_OFFSETS[offs] : offs;
             offs = newOffs;
-            this.debug(buf.slice(len), '13b Shift');
+            this.debug(buf.slice(len), '13b Shift', newOffs.toString(16));
           }
           is21Bit = false;
         }

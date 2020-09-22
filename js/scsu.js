@@ -1,3 +1,5 @@
+// Ported from https://www.unicode.org/Public/PROGRAMS/SCSUMini/scsumini.c
+
 const SCSU = {
   SQ0: 0x01,
   SQU: 0x0E,
