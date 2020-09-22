@@ -1,0 +1,28 @@
+{
+  "name": "utf-c",
+  "version": "1.0.0",
+  "description": "A micro library to provide a very compact encoding of Strings",
+  "main": "utf-c.js",
+  "scripts": {
+    "test": "node utf-c.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deNULL/utf-c.git"
+  },
+  "keywords": [
+    "utf",
+    "unicode",
+    "encoding",
+    "utf-8",
+    "utf8",
+    "utfc",
+    "binary"
+  ],
+  "author": "Denis Olshin (me@denull.ru)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/deNULL/utf-c/issues"
+  },
+  "homepage": "https://github.com/deNULL/utf-c#readme"
+}

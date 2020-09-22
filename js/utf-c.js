@@ -44,7 +44,7 @@ const AUX_OFFSETS = {
   0x3000: 0x3040, // Hiragana
 };
 
-const RANGES_LATIN = [[0x41, 0x5B], [0x61, 0x7B], [0x30, 0x40], [0x20, 0x21], [0x2D, 0x2C]];
+const RANGES_LATIN = [[0x41, 0x5B], [0x61, 0x7B], [0x30, 0x3A], [0x20, 0x21], [0x2D, 0x2C]];
 const RANGE_HK = [0x3000, 0x3100]; // Hiragana and Katakana
 const RANGES_EXTRA = [[0x2000, 0x2800], RANGE_HK, [0xFE00, 0xFE10], [0x1F170, 0x1F200], [0x1F300, 0x1F700], [0x1F900, 0x1FA00]];
 
@@ -155,12 +155,13 @@ const UTFC = {
       if ((cp & MARKER_EXTRA) === MARKER_EXTRA) {
         cp = decodeRanges((cp & ~MARKER_EXTRA) << 8 | buf[++i], RANGES_EXTRA);
         if (cp >= RANGE_HK[0] && cp < RANGE_HK[1]) {
-          auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = newOffs, is21Bit = false;
+          auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = cp & OFFS_MASK_13BIT, is21Bit = false;
         }
       } else
       if ((cp & MARKER_21BIT) === MARKER_21BIT) {
-        cp = MIN_21BIT_CP + ((cp & ~MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
+        cp = ((cp & ~MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
         auxOffs = offs, offs = cp & OFFS_MASK_21BIT, is21Bit = true;
+        cp += MIN_21BIT_CP;
       } else
       if ((cp & MARKER_13BIT) === MARKER_13BIT) {
         cp = (cp & ~MARKER_13BIT) << 8 | buf[++i];
