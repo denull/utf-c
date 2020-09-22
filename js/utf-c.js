@@ -154,6 +154,9 @@ const UTFC = {
       } else
       if ((cp & MARKER_EXTRA) === MARKER_EXTRA) {
         cp = decodeRanges((cp & ~MARKER_EXTRA) << 8 | buf[++i], RANGES_EXTRA);
+        if (cp >= RANGE_HK[0] && cp < RANGE_HK[1]) {
+          auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = newOffs, is21Bit = false;
+        }
       } else
       if ((cp & MARKER_21BIT) === MARKER_21BIT) {
         cp = MIN_21BIT_CP + ((cp & ~MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
