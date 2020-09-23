@@ -61,20 +61,17 @@ const encodeRanges = (cp, ranges) => {
   for (let rng of ranges) {
     if (rng[0] <= cp && cp < rng[1]) {
       return v + (cp - rng[0]);
-    } else {
-      v += rng[1] - rng[0];
     }
+    v += rng[1] - rng[0];
   }
 }
 
 const decodeRanges = (v, ranges) => {
-  let cp = 0;
   for (let rng of ranges) {
     if (v < rng[1] - rng[0]) {
       return rng[0] + v;
-    } else {
-      v -= rng[1] - rng[0];
     }
+    v -= rng[1] - rng[0];
   }
 }
 
