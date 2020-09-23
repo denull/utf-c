@@ -16,6 +16,7 @@ const tests = [
 	'Қазақша',
 	'Об\'єднаних',
 	'а б в г д е ё',
+	'а,б,в,г,д,е,ё',
 	'中ab文01文',
   '威尔士三',
   '表面か',
@@ -67,6 +68,8 @@ function test(str) {
     }
   }
 
+  utf8Total += utf8.length;
+  utfcTotal += buf.length;
   const diff = (utf8.length - buf.length) * 100 / utf8.length;
   const percent = Math.abs(diff).toFixed(1);
 
@@ -84,6 +87,13 @@ function test(str) {
   }
 }
 
+let utf8Total = 0;
+let utfcTotal = 0;
 for (let str of tests) {
   test(str);
 }
+
+const diff = (utf8Total - utfcTotal) * 100 / utf8Total;
+const percent = Math.abs(diff).toFixed(1);
+console.log(`Total score: ${diff > 0 ? FgGreen + percent + '% better' + Reset + ' than' : 
+  (diff < 0 ? FgRed + percent + '% worse' + Reset + ' than' : 'same as')} UTF-8`);

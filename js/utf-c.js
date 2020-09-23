@@ -131,11 +131,8 @@ const UTFC = {
           buf.push(cp & 0x7F);
         } else { // Final case: we need 2 bytes for this character
           buf.push(MARKER_13BIT | (cp >> 8), cp & 0xFF);
-          if (cp <= MAX_LATIN_CP) { // For extended Latin we keep alphabet equal to 0
-            offs = 0;
-          } else { // Otherwise, change the current alphabet, and store the previous one as auxiliary
-            auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = newOffs;
-          }
+          auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs;
+          offs = cp <= MAX_LATIN_CP ? 0 : newOffs;
           is21Bit = false;
         }
       }
@@ -165,11 +162,8 @@ const UTFC = {
       } else
       if ((cp & MARKER_13BIT) === MARKER_13BIT) {
         cp = (cp & ~MARKER_13BIT) << 8 | buf[++i];
-        if (cp <= MAX_LATIN_CP) {
-          offs = 0;
-        } else {
-          auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = cp & OFFS_MASK_13BIT;
-        }
+        auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs;
+        offs = cp <= MAX_LATIN_CP ? 0 : (cp & OFFS_MASK_13BIT);
         is21Bit = false;
       } else
       if (is21Bit) {

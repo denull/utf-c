@@ -1,5 +1,6 @@
 // Ported from https://www.unicode.org/Public/PROGRAMS/SCSUMini/scsumini.c
 
+(() => {
 const SCSU = {
   SQ0: 0x01,
   SQU: 0x0E,
@@ -123,3 +124,10 @@ const SCSU = {
     return Uint8Array.from(buf);
   }
 }
+
+if (typeof window !== 'undefined') {
+  window.SCSU = SCSU;
+} else {
+  module.exports = SCSU;
+}
+})();
