@@ -144,21 +144,21 @@ const UTFC = {
     for (let i = 0; i < buf.length; i++) {
       let cp = buf[i];
       if ((cp & MARKER_AUX) === MARKER_AUX) {
-        cp = auxOffs === 0 ? decodeRanges(cp & ~MARKER_AUX, RANGES_LATIN) : (auxOffs + (cp & ~MARKER_AUX));
+        cp = auxOffs === 0 ? decodeRanges(cp ^ MARKER_AUX, RANGES_LATIN) : (auxOffs + (cp ^ MARKER_AUX));
       } else
       if ((cp & MARKER_EXTRA) === MARKER_EXTRA) {
-        cp = decodeRanges((cp & ~MARKER_EXTRA) << 8 | buf[++i], RANGES_EXTRA);
+        cp = decodeRanges((cp ^ MARKER_EXTRA) << 8 | buf[++i], RANGES_EXTRA);
         if (cp >= RANGE_HK[0] && cp < RANGE_HK[1]) {
           auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = cp & OFFS_MASK_13BIT, is21Bit = false;
         }
       } else
       if ((cp & MARKER_21BIT) === MARKER_21BIT) {
-        cp = ((cp & ~MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
+        cp = ((cp ^ MARKER_21BIT) << 16 | buf[++i] << 8 | buf[++i]);
         auxOffs = offs, offs = cp & OFFS_MASK_21BIT, is21Bit = true;
         cp += MIN_21BIT_CP;
       } else
       if ((cp & MARKER_13BIT) === MARKER_13BIT) {
-        cp = (cp & ~MARKER_13BIT) << 8 | buf[++i];
+        cp = (cp ^ MARKER_13BIT) << 8 | buf[++i];
         auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs;
         offs = cp <= MAX_LATIN_CP ? 0 : (cp & OFFS_MASK_13BIT);
         is21Bit = false;
