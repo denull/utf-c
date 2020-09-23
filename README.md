@@ -55,7 +55,25 @@ TBD: The code of this implementation can be optimised a bit to reduce number of 
 
 # Encoding details
 
+UTF-8 is the most widely used way to represent Unicode strings. It is, however, not the most efficient one: it can use up to 4 bytes to represent a single codepoint, although the total number of codepoints is much less than a maximum 3-byte integer: 0x10FFFF. UTF-8 still tries not to be too wasteful by encoding most common characters in 1, 2 or 3 bytes. Unfortunately, most languages that use any characters outside of ASCII range, require at least 2 bytes per character.
 
+UTF-C is developed for those rare cases where you need to store strings more compactly than that (and don't need any compatability that UTF-8 provides). For example, my own application of this algorithm is for a multilingual [https://en.wikipedia.org/wiki/Radix_tree](radix tree). If you're looking for storing long texts, a general-purpose compression algorithms (gzip/deflate, LZW/LZMA and so on) will be a better choice.
+
+UTF-C is **stateful**. That means that encoder and decoder need to keep some state between decoding characters. This state consist of three variables: an offset `offs` to the base alphabet, a flag `is21Bit` defining the current mode (21-bit or 7/13-bit), and an offset `auxOffs` to the auxiliary alphabet. Base alphabet is basically a range of 128 codepoints in all Unicode space, and auxiliary alphabet is a range of 64 codepoints. By default the base alphabet is `0` (i.e. Latin), and auxiliary alphabet is `0xC0` (i.e. top part of Latin-1 Supplement, CP1252 and ISO-8859-1).
+
+Similarly to UTF-8, UTF-C uses variable-length coding, identified by the first byte of the sequence. There're 5 coding variants, which have those bit masks:
+
+* `0xxx xxxx`: a character from the base alphabet. Depending on the current state (`is21Bit` flag, to be more precise), this byte can be followed by the second one.
+* `11xx xxxx`: a character from the auxiliary alphabet. Always a single byte.
+* `100x xxxx  xyyy yyyy`: a "change alphabet and encode" command for 7/13-bit alphabets. Sets `auxOffs` to a predefined portion of previously active base alphabet (`offs`), sets `offs` to `xxxxx x0000000`, resets flag `is21Bit` to false, and encodes 7/13-bit character `xxxxx xyyyyyyy` in that alphabet.
+* `101x xxxx  xyyy yyyy  yyyy yyyy`: a "change alphabet and encode" command for 21-bit alphabets. Similarly to 7/13-bit mode, sets `auxOffs` to previous subrange of `offs`, sets `offs` to `xxxxx x0000000 00000000`, sets flag `is21Bit` to true, and encodes 21-bit character `xxxxx xyyyyyyy yyyyyyyy` in that alphabet.
+* `1011 xxxx  xxxx xxxx`: a character from "extra" ranges. Characters in those Unicode ranges would normally require 21 bit coding (3 bytes), but remapped here to be encoded in just 2. Those ranges include Japanase hieroglyphs and most of the emojis.
+
+Note that base alphabet always stores top 6 bits of Unicode codepoints. After any alphabet change, `0xxx xxxx` byte values are simply added to these offset to determine the desired character.
+
+When the base alphabet is changed, it's previous value is stored to auxiliary alphabet for quick access (via `11xx xxxx`). The auxiliary alphabet, however, is smaller: it contains only 64 values (6 bits). To prevent frequent alphabet changes, for some predefined alphabets the start of auxiliary alphabet is offseted from the start of the base one. For example, the base alphabet used for Cyrillic is `0x0400` (it's the start of the corresponding Unicode block). However, when alphabet is changed, this offset would become `0x0410` -- because the main portion of cyrillic letters starts at that point. When Latin alphabet becomes auxiliary, it's ASCII range not just offseted, but remapped, so it includes all "A"-"Z", "a"-"z" characters, digits, "-" (dash) and " " (space). For many languages it allows inserting latin characters without switching alphabets.
+
+You may notice that prefixes of the last 2 coding variants -- `101x xxxx  xyyy yyyy  yyyy yyyy` and `1011 xxxx  xxxx xxxx` -- overlap with each other. That's because the former one allows encoding values up to `0x1FFFFF`, but Unicode extends only to `0x10FFFF`. So if the first byte is `1011 xxxx`, and `xxxx` is non-zero, there's no corresponding Unicode codepoint. UTF-C utilises this fact to reduce the number of space used by some characters that otherwise would require 3 byte coding. Those characters mostly include emojis (which tend to be very "wide" in terms of bytes used) and Hiragana/Katakana (frequently used in Japanese language).
 
 If some implementation details still remain unclear, you can inspect the source code in [https://github.com/deNULL/utf-c/js/utf-c.js](JavaScript) or [https://github.com/deNULL/utf-c/go/utfc.go](Go) — it contains a lot of detailed comments.
 
