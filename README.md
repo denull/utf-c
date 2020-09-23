@@ -75,7 +75,7 @@ When the base alphabet is changed, it's previous value is stored to auxiliary al
 
 You may notice that prefixes of the last 2 coding variants -- `101x xxxx  xyyy yyyy  yyyy yyyy` and `1011 xxxx  xxxx xxxx` -- overlap with each other. That's because the former one allows encoding values up to `0x1FFFFF`, but Unicode extends only to `0x10FFFF`. So if the first byte is `1011 xxxx`, and `xxxx` is non-zero, there's no corresponding Unicode codepoint. UTF-C utilises this fact to reduce the number of space used by some characters that otherwise would require 3 byte coding. Those characters mostly include emojis (which tend to be very "wide" in terms of bytes used) and Hiragana/Katakana (frequently used in Japanese language).
 
-If some implementation details still remain unclear, you can inspect the source code in [JavaScript](https://github.com/deNULL/utf-c/js/utf-c.js) or [Go](https://github.com/deNULL/utf-c/go/utfc.go) — it contains a lot of detailed comments.
+If some implementation details still remain unclear, you can inspect the source code in [JavaScript](https://github.com/deNULL/utf-c/blob/master/js/utf-c.js) or [Go](https://github.com/deNULL/utf-c/blob/master/go/utfc.go) — it contains a lot of detailed comments.
 
 ## Possible variations and extensions
 
