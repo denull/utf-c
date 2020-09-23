@@ -123,7 +123,7 @@ func Encode(str string) []byte {
 			} else {
 				// Reindex 6 ranges into a single contiguous one
 				extra := encodeRanges(cp, rangesExtra)
-				buf = append(buf, byte(markerExtra|(1+extra>>8)), byte(extra))
+				buf = append(buf, byte(markerExtra|(1+(extra>>8))), byte(extra))
 				if cp >= rangeHK[0] && cp < rangeHK[1] { // Only Hiragana and Katakana change the current alphabet
 					auxOffs = getAuxOffset(offs)
 					offs = newOffs
@@ -180,8 +180,8 @@ func Decode(buf []byte) string {
 			} else {
 				cp = auxOffs + (cp ^ markerAux)
 			}
-		} else if (cp & markerExtra) == markerExtra {
-			cp = decodeRanges((cp^markerExtra)<<8|int(buf[i]), rangesExtra)
+		} else if (cp&markerExtra) == markerExtra && (cp^markerExtra) != 0 {
+			cp = decodeRanges(((cp^markerExtra)-1)<<8|int(buf[i]), rangesExtra)
 			i++
 			if cp >= rangeHK[0] && cp < rangeHK[1] {
 				auxOffs = getAuxOffset(offs)

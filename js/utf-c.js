@@ -104,7 +104,7 @@ const UTFC = {
         } else {
           // Reindex 6 ranges into a single contiguous one
           const extra = encodeRanges(cp, RANGES_EXTRA);
-          buf.push(MARKER_EXTRA | (1 + extra >> 8), extra & 0xFF);
+          buf.push(MARKER_EXTRA | (1 + (extra >> 8)), extra & 0xFF);
           if (cp >= RANGE_HK[0] && cp < RANGE_HK[1]) { // Only Hiragana and Katakana change the current alphabet
             auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = newOffs, is21Bit = false;
           }
@@ -146,8 +146,8 @@ const UTFC = {
       if ((cp & MARKER_AUX) === MARKER_AUX) {
         cp = auxOffs === 0 ? decodeRanges(cp ^ MARKER_AUX, RANGES_LATIN) : (auxOffs + (cp ^ MARKER_AUX));
       } else
-      if ((cp & MARKER_EXTRA) === MARKER_EXTRA) {
-        cp = decodeRanges((cp ^ MARKER_EXTRA) << 8 | buf[++i], RANGES_EXTRA);
+      if ((cp & MARKER_EXTRA) === MARKER_EXTRA && (cp ^ MARKER_EXTRA)) {
+        cp = decodeRanges(((cp ^ MARKER_EXTRA) - 1) << 8 | buf[++i], RANGES_EXTRA);
         if (cp >= RANGE_HK[0] && cp < RANGE_HK[1]) {
           auxOffs = offs in AUX_OFFSETS ? AUX_OFFSETS[offs] : offs, offs = cp & OFFS_MASK_13BIT, is21Bit = false;
         }
