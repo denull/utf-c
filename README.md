@@ -1,12 +1,12 @@
-## UTF-C
+# UTF-C
 
 This repository contains two implementations (in JavaScript and in Go) of a custom Unicode encoding scheme for storing strings in a compact way. It's mainly intended for storing a lot of short strings in memory. It's not a standard algorithm, and you should not use it in external APIs: it does not provide ASCII transparency (the produced output can contain 7-bit ASCII values that weren't present in the original string), so it can lead to a number of security vulnerabilities. It is, however, ASCII (and partly CP1252/ISO-8859-1) compatible: every ASCII string (and some CP1252 strings) is represented in the same way in UTF-C.
 
-**UTF-C** (C stands for "compact") is similar to [https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode](SCSU) (Standard Compression Scheme for Unicode), but it's more lightweight and simple (for example, minified JS version is just 1.7 Kb that includes both encoder and decoder). It's implementation does not require any heuristics to achieve good performance. In comparision with a SCSU compressor of same complexity, it often delivers better results in terms of compressed strings size.
+**UTF-C** (C stands for "compact") is similar to [SCSU](https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode) (Standard Compression Scheme for Unicode), but it's more lightweight and simple (for example, minified JS version is just 1.7 Kb that includes both encoder and decoder). It's implementation does not require any heuristics to achieve good performance. In comparision with a SCSU compressor of same complexity, it often delivers better results in terms of compressed strings size.
 
-You can try it for yourself in this [https://denull.github.io/utf-c/](online demo).
+You can try it for yourself in this [online demo](https://denull.github.io/utf-c/).
 
-# JavaScript Library
+## JavaScript Library
 
 To use this encoding you can install `utf-c` library via **npm** or **yarn**:
 
@@ -28,7 +28,7 @@ const UTFC = require('utf-c');
 console.log(UTFC.encode('Hello World!'));
 ```
 
-# Go Package
+## Go Package
 
 Run `go get` to install this package as a dependency:
 
@@ -53,11 +53,11 @@ It would probably make sense to implement `Encoder` and `Decoder` interfaces fro
 
 TBD: The code of this implementation can be optimised a bit to reduce number of memory allocations and operating on string content directly (without extracting decoded Unicode runes).
 
-# Encoding details
+## Encoding details
 
 UTF-8 is the most widely used way to represent Unicode strings. It is, however, not the most efficient one: it can use up to 4 bytes to represent a single codepoint, although the total number of codepoints is much less than a maximum 3-byte integer: 0x10FFFF. UTF-8 still tries not to be too wasteful by encoding most common characters in 1, 2 or 3 bytes. Unfortunately, most languages that use any characters outside of ASCII range, require at least 2 bytes per character.
 
-UTF-C is developed for those rare cases where you need to store strings more compactly than that (and don't need any compatability that UTF-8 provides). For example, my own application of this algorithm is for a multilingual [https://en.wikipedia.org/wiki/Radix_tree](radix tree). If you're looking for storing long texts, a general-purpose compression algorithms (gzip/deflate, LZW/LZMA and so on) will be a better choice.
+UTF-C is developed for those rare cases where you need to store strings more compactly than that (and don't need any compatability that UTF-8 provides). For example, my own application of this algorithm is for a multilingual [radix tree](https://en.wikipedia.org/wiki/Radix_tree). If you're looking for storing long texts, a general-purpose compression algorithms (gzip/deflate, LZW/LZMA and so on) will be a better choice.
 
 UTF-C is **stateful**. That means that encoder and decoder need to keep some state between decoding characters. This state consist of three variables: an offset `offs` to the base alphabet, a flag `is21Bit` defining the current mode (21-bit or 7/13-bit), and an offset `auxOffs` to the auxiliary alphabet. Base alphabet is basically a range of 128 codepoints in all Unicode space, and auxiliary alphabet is a range of 64 codepoints. By default the base alphabet is `0` (i.e. Latin), and auxiliary alphabet is `0xC0` (i.e. top part of Latin-1 Supplement, CP1252 and ISO-8859-1).
 
@@ -75,9 +75,9 @@ When the base alphabet is changed, it's previous value is stored to auxiliary al
 
 You may notice that prefixes of the last 2 coding variants -- `101x xxxx  xyyy yyyy  yyyy yyyy` and `1011 xxxx  xxxx xxxx` -- overlap with each other. That's because the former one allows encoding values up to `0x1FFFFF`, but Unicode extends only to `0x10FFFF`. So if the first byte is `1011 xxxx`, and `xxxx` is non-zero, there's no corresponding Unicode codepoint. UTF-C utilises this fact to reduce the number of space used by some characters that otherwise would require 3 byte coding. Those characters mostly include emojis (which tend to be very "wide" in terms of bytes used) and Hiragana/Katakana (frequently used in Japanese language).
 
-If some implementation details still remain unclear, you can inspect the source code in [https://github.com/deNULL/utf-c/js/utf-c.js](JavaScript) or [https://github.com/deNULL/utf-c/go/utfc.go](Go) — it contains a lot of detailed comments.
+If some implementation details still remain unclear, you can inspect the source code in [JavaScript](https://github.com/deNULL/utf-c/js/utf-c.js) or [Go](https://github.com/deNULL/utf-c/go/utfc.go) — it contains a lot of detailed comments.
 
-# Possible variations and extensions
+## Possible variations and extensions
 
 Stateful encoding is sometimes undesirable. For example, you may want to have any character or substring to be encoded in the same way, independently from context. It's pretty simple to achieve by removing any changes to the state (`offs`, `auxOffs` and `is21Bit` variables in code) both from encoder and decoder. After that every character will be fully encoded. This won't be as efficient as default implementation of UTF-C, but should still perform better than UTF-8 (and similar codepoints will still have similar encodings in terms of most significant bits).
 
@@ -85,10 +85,10 @@ In cases when most of strings to be compressed are known to be of certain langua
 
 Although UTF-C is not intended for storing a large portions of texts (general purpose compression algorithm may be a better approach in this case), it's still can be used for that. But unfortunately, due to very compact (and variable-length) coding, there's no reliable way to find a character boundary without doing a full scan from the start. To fix that, you can insert the byte sequence `0xBF 0xBF 0xBF` periodically (for example, one for each 10 Kb of output) in the produced buffer (no Unicode character should produce this sequence in UTF-C) and reset the encoder state. After that, if you'll need to find a closest character boundary from a random point, you can scan the previous 10 Kb chunk until you'll find this sequence. After the last `0xBF` byte you'll get the character boundary and can continue decoding data.
 
-# Links
+## Links
 
-* [https://denull.github.io/utf-c/](Demo Page for UTF-C)
-* [https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode](SCSU on Wikipedia)
-* [https://en.wikipedia.org/wiki/Binary_Ordered_Compression_for_Unicode](BOCU-1 on Wikipedia)
-* [https://www.unicode.org/reports/tr6/tr6-4.html](Standard Compression Scheme for Unicode)
-* [http://ewellic.org/compression.html](A survey of Unicode compression), Doug Ewell, 2004
+* [Demo Page for UTF-C](https://denull.github.io/utf-c/)
+* [SCSU on Wikipedia](https://en.wikipedia.org/wiki/Standard_Compression_Scheme_for_Unicode)
+* [BOCU-1 on Wikipedia](https://en.wikipedia.org/wiki/Binary_Ordered_Compression_for_Unicode)
+* [Standard Compression Scheme for Unicode](https://www.unicode.org/reports/tr6/tr6-4.html)
+* [A survey of Unicode compression](http://ewellic.org/compression.html), Doug Ewell, 2004
