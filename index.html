@@ -9,25 +9,27 @@
   <script src="js/scsu.js"></script>
 </head>
 <body>
-  <textarea oninput="updateText(this.value)"></textarea>
+  <textarea id="input" oninput="updateText()"></textarea>
   <div id="samples"></div>
   <span id="stats"></span>
   <div>
     UTF-8 (<span id="stats-utf8"></span>): <span id="result-utf8"></span>
   </div>
   <div>
-    UTF-C (<span id="stats-utfc"></span>): <span id="result-utfc"></span>
-  </div>
-  <div>
     SCSU (<span id="stats-scsu"></span>): <span id="result-scsu"></span>
   </div>
   <div>
-    Control: <span id="control"></span>
+    UTF-C (<span id="stats-utfc"></span>): <span id="result-utfc"></span>
+  </div>
+  <div id="compare-utf8"></div>
+  <div id="compare-scsu"></div>
+  <div>
+    Control: <span id="control"></span> <span id="control-info"></span>
   </div>
 
 <script>
   function plural(n, s = ['', 's']) {
-    if (n == 1) {
+    if (n % 10 == 1) {
       return s[0];
     }
     return s[1];
@@ -35,7 +37,8 @@
   function displayBytes(el, bytes) {
     document.getElementById(el).innerHTML = Array.of(...bytes).map(byte => `<span class="byte">${byte < 16 ? '0' : ''}${byte.toString(16).toUpperCase()}</span>`).join('');
   }
-  function updateText(str) {
+  function updateText() {
+    const str = document.getElementById('input').value;
     const encoder = new TextEncoder();
     const utf8 = encoder.encode(str);
     document.getElementById('stats').innerHTML = `${str.length} character${plural(str.length)} (in UCS-2)`;
@@ -45,15 +48,29 @@
     const utfc = UTFC.encode(str);
     document.getElementById('stats-utfc').innerHTML = `${utfc.length} byte${plural(utfc.length)}`;
     displayBytes('result-utfc', utfc);
-    console.log(Array.of(...utfc).map(byte => String.fromCharCode(byte)).join(''));
+    //console.log(Array.of(...utfc).map(byte => String.fromCharCode(byte)).join(''));
 
     const scsu = SCSU.encode(str);
     document.getElementById('stats-scsu').innerHTML = `${scsu.length} byte${plural(scsu.length)}`;
     displayBytes('result-scsu', scsu);
     //console.log(Array.of(...utfc).map(byte => String.fromCharCode(byte)).join(''));
 
-    document.getElementById('control').textContent = UTFC.decode(utfc);
+    const diffUtf8 = (utf8.length - utfc.length) * 100 / (utf8.length || 1);
+    const percentUtf8 = Math.abs(diffUtf8).toFixed(1);
 
+    const diffSCSU = (scsu.length - utfc.length) * 100 / (utf8.length || 1);
+    const percentSCSU = Math.abs(diffSCSU).toFixed(1);
+
+    document.getElementById('compare-utf8').innerHTML = `${diffUtf8 > 0 ? '<span class="green">' + percentUtf8 + '% better</span> than' : 
+        (diffUtf8 < 0 ? '<span class="red">' + percentUtf8 + '% worse</span> than' : 'same as')} UTF-8`;
+    document.getElementById('compare-scsu').innerHTML = `${diffSCSU > 0 ? '<span class="green">' + percentSCSU + '% better</span> than' : 
+        (diffSCSU < 0 ? '<span class="red">' + percentSCSU + '% worse</span> than' : 'same as')} SCSU`;
+
+    const ctrl = UTFC.decode(utfc);
+    document.getElementById('control').textContent = ctrl;
+    document.getElementById('control-info').innerHTML = `(${ctrl.length} character${plural(ctrl.length)}, ${ctrl === str ? 'matches input' : '<b>does not match input</b>'})`
+
+    /*
     const hist = {};
     for (let ch of str) {
       const cp = ch.codePointAt(0);
@@ -66,7 +83,9 @@
     for (let cp in hist) {
       console.log(parseInt(cp).toString(16) + ': ' + hist[cp]);
     }
+    */
   }
+  updateText();
 </script>
 </body>
 </html>
