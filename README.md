@@ -33,7 +33,7 @@ console.log(UTFC.encode('Hello World!'));
 Run `go get` to install this package as a dependency:
 
 ```go
-go get github.com/denull/utf-c
+go get "github.com/denull/utf-c/go"
 ```
 
 Just like in JavaScript, this package provides `Encode` (which converts `string` to the corresponding `[]byte` buffer) and `Decode` functions:
