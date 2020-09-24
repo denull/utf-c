@@ -1,6 +1,6 @@
 {
   "name": "utf-c",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A micro library to provide a very compact encoding of Strings",
   "main": "utf-c.js",
   "scripts": {
