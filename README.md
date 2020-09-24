@@ -40,7 +40,7 @@ Just like in JavaScript, this package provides `Encode` (which converts `string`
 
 ```go
 import (
-  utfc "github.com/deNULL/utf-c"
+  utfc "github.com/deNULL/utf-c/go"
 )
 
 func main() {
