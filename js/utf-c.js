@@ -134,7 +134,7 @@ const UTFC = {
         }
       }
     }
-    return (typeof Uint8Array === 'undefined' ? Buffer : Uint8Array).from(buf);
+    return (typeof Buffer === 'undefined' ? Uint8Array : Buffer).from(buf);
   },
 
   // Decodes String from an UTF-C Uint8Array/Buffer (similarly to TextEncoder.prototype.decode)
